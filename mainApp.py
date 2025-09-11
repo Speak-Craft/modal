@@ -65,6 +65,10 @@ def create_unified_app() -> FastAPI:
     filler_dir = base_dir / "Filler-words"
     filler_app_path = filler_dir / "app.py"
 
+    # Loudness service
+    loudness_dir = base_dir / "loudness-model"
+    loudness_app_path = loudness_dir / "predictLoudness.py"
+
     # Import sub-apps
     # app.py uses `from feature_extraction2 import ...` and reads local model files.
     # We add its directory to sys.path and chdir during import so absolute/relative lookups work.
@@ -91,6 +95,14 @@ def create_unified_app() -> FastAPI:
         chdir_for_import=True,
     )
 
+    # Import loudness app
+    loudness_module = _import_module_from_path(
+        module_name="loudness_app",
+        file_path=loudness_app_path,
+        add_sys_path=loudness_dir,
+        chdir_for_import=True,
+    )
+
     # Retrieve FastAPI instances from imported modules
     try:
         pause_app: FastAPI = getattr(other_pace_module, "app")
@@ -106,6 +118,11 @@ def create_unified_app() -> FastAPI:
         filler_app: FastAPI = getattr(filler_module, "app")
     except AttributeError as exc:
         raise RuntimeError("Filler-words/app.py does not expose a FastAPI instance named 'app'") from exc
+
+    try:
+        loudness_app: FastAPI = getattr(loudness_module, "app")
+    except AttributeError as exc:
+        raise RuntimeError("loudness-model/predictLoudness.py does not expose a FastAPI instance named 'app'") from exc
 
     # Create unified app and mount the sub-apps
     unified = FastAPI(title="SpeakCraft Unified API", version="1.0.0")
@@ -123,6 +140,7 @@ def create_unified_app() -> FastAPI:
     unified.mount("/pause", pause_app)
     unified.mount("/rate", rate_app)
     unified.mount("/filler", filler_app)
+    unified.mount("/loudness", loudness_app)
 
     # Backward/compatibility routes to support existing frontend paths
     @unified.post("/rate-analysis/")
@@ -140,6 +158,10 @@ def create_unified_app() -> FastAPI:
     @unified.post("/predict-filler-words")
     async def _compat_predict_filler_words():  # type: ignore[misc]
         return RedirectResponse(url="/filler/predict-filler-words", status_code=307)
+
+    @unified.post("/predict-loudness")
+    async def _compat_predict_loudness():  # type: ignore[misc]
+        return RedirectResponse(url="/loudness/predict-loudness", status_code=307)
 
     @unified.get("/")
     def root():  # type: ignore[misc]
@@ -164,6 +186,12 @@ def create_unified_app() -> FastAPI:
                     "base_path": "/filler",
                     "endpoints": [
                         "/filler/predict-filler-words",
+                    ],
+                },
+                "loudness": {
+                    "base_path": "/loudness",
+                    "endpoints": [
+                        "/loudness/predict-loudness",
                     ],
                 },
             },
