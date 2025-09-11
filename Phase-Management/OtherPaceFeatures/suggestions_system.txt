@@ -1,0 +1,641 @@
+# SUGGESTIONS SYSTEM - Copy this into your feature_extraction2.txt file
+
+# ---------- Enhanced Inference + Suggestions ----------
+@dataclass
+class EnhancedPrediction:
+    label: str
+    probs: Dict[str,float]
+    suggestions: List[str]
+    features: Dict[str,float]
+    confidence: float
+    improvement_areas: List[str]
+
+def suggest_from_features(f: Dict[str, Any]) -> List[str]:
+    """Enhanced suggestion system using Toastmasters standards and novel pause analysis"""
+    tips = []
+    
+    # Toastmasters compliance suggestions
+    toastmasters_score = f.get("toastmasters_compliance_score", 0.0)
+    if toastmasters_score < 0.6:
+        tips.append("🏆 TOASTMASTERS: Focus on industry-standard pause management (8-12% pause ratio).")
+    elif toastmasters_score < 0.8:
+        tips.append("🏆 TOASTMASTERS: Good progress! Aim for 8-12% pause ratio with optimal transition timing.")
+    
+    # Pause management suggestions using industry standards
+    if f["pause_ratio"] > 0.15:
+        tips.append("🚨 CRITICAL: Reduce total pause time significantly. Target pause ratio 8-12% (Toastmasters standard).")
+    elif f["pause_ratio"] > 0.12:
+        tips.append("⚠️  Reduce pause time. Aim for 8-12% pause ratio for natural flow (Toastmasters standard).")
+    elif f["pause_ratio"] < 0.08:
+        tips.append("💡 Consider adding more strategic pauses. Optimal range is 8-12% for audience engagement.")
+    
+    if f["long_count"] > 6:
+        tips.append("🚨 CRITICAL: Too many long pauses. Limit to <4 long pauses per presentation.")
+    elif f["long_count"] > 4:
+        tips.append("⚠️  Reduce long pauses. Use transitions or signposting to avoid gaps.")
+    
+    # Contextual pause analysis suggestions
+    contextual_score = f.get("contextual_pause_score", 0.0)
+    if contextual_score < 0.0:
+        tips.append("🎭 CONTEXT: Improve pause context. Use 1.5-2.0s for transitions, 0.5-1.0s for emphasis.")
+    
+    transition_ratio = f.get("optimal_transition_ratio", 1.0)
+    if transition_ratio < 0.6:
+        tips.append("🔄 TRANSITIONS: Improve transition pauses. Target 1.5-2.0s between topics for clarity.")
+    
+    emphasis_ratio = f.get("optimal_emphasis_ratio", 1.0)
+    if emphasis_ratio < 0.6:
+        tips.append("💪 EMPHASIS: Use 0.5-1.0s pauses for key points to enhance audience retention.")
+    
+    # Rhythm pattern suggestions
+    rhythm_consistency = f.get("pause_rhythm_consistency", 1.0)
+    if rhythm_consistency < 0.4:
+        tips.append("🎵 RHYTHM: Work on consistent pause timing. Practice with metronome for rhythm consistency.")
+    
+    golden_ratio = f.get("golden_ratio_pauses", 0.0)
+    if golden_ratio < 0.3:
+        tips.append("✨ GOLDEN RATIO: Incorporate natural speech rhythms. Some pauses should be 1.618x longer than average.")
+    
+    # Cognitive load suggestions
+    cognitive_score = f.get("cognitive_pause_score", 0.0)
+    if cognitive_score < 0.4:
+        tips.append("🧠 COGNITIVE: Optimize thinking pauses. Use 1.0-3.0s pauses for complex concepts.")
+    
+    confidence_score = f.get("confidence_score", 1.0)
+    if confidence_score < 0.7:
+        tips.append("💪 CONFIDENCE: Reduce hesitation. Practice content to minimize thinking pauses during delivery.")
+    
+    # Advanced statistical suggestions
+    pause_entropy = f.get("pause_entropy", 0.0)
+    if pause_entropy > 0.8:
+        tips.append("📊 PATTERN: Pauses are too random. Develop more intentional, structured pause patterns.")
+    
+    pause_volatility = f.get("pause_volatility", 0.0)
+    if pause_volatility > 2.0:
+        tips.append("📈 STABILITY: Pause durations vary too much. Aim for consistent pause lengths within categories.")
+    
+    # Pace consistency suggestions
+    if f["wpm_cv"] > 0.4:
+        tips.append("🚨 CRITICAL: Very inconsistent pace. Practice with metronome at steady WPM.")
+    elif f["wpm_cv"] > 0.25:
+        tips.append("⚠️  Pace varies too much. Aim for ±15% WPM variation.")
+    
+    if f["wpm_delta_std"] > 8:
+        tips.append("🚨 CRITICAL: Sudden pace changes. Practice smooth transitions between sections.")
+    elif f["wpm_delta_std"] > 5:
+        tips.append("⚠️  Pace changes too abruptly. Smooth out transitions.")
+    
+    # Advanced pace stability
+    if f.get("wpm_jerk", 0) > 10:
+        tips.append("🚨 CRITICAL: Very jerky pace changes. Practice gradual speed adjustments.")
+    elif f.get("wpm_jerk", 0) > 5:
+        tips.append("⚠️  Pace changes are jerky. Smooth out acceleration and deceleration.")
+    
+    # Rhythm and flow suggestions
+    if f["rhythm_outliers"] >= 6:
+        tips.append("🚨 CRITICAL: Inconsistent rhythm. Practice consistent segment lengths.")
+    elif f["rhythm_outliers"] >= 3:
+        tips.append("⚠️  Rhythm needs work. Aim for consistent speech segment durations.")
+    
+    if f.get("speech_continuity", 1.0) < 0.6:
+        tips.append("🚨 CRITICAL: Speech is too fragmented. Reduce unnecessary pauses between thoughts.")
+    elif f.get("speech_continuity", 1.0) < 0.8:
+        tips.append("⚠️  Speech flow could be smoother. Connect related ideas more seamlessly.")
+    
+    # Speaking efficiency
+    if f["speaking_efficiency"] < 0.7:
+        tips.append("⚠️  Low speaking efficiency. Reduce unnecessary pauses and filler words.")
+    
+    if f["pause_efficiency"] > 3.0:
+        tips.append("⚠️  Pauses are too long. Target 0.5-2.0 second pauses for natural flow.")
+    
+    # Advanced feature suggestions
+    if f.get("jitter_local", 0) > 0.02:
+        tips.append("💡 Voice stability: Reduce vocal jitter for clearer speech.")
+    
+    if f.get("shimmer_local", 0) > 0.1:
+        tips.append("💡 Voice quality: Work on consistent vocal intensity.")
+    
+    if f.get("pitch_std", 0) > 50:
+        tips.append("💡 Pitch control: Maintain more consistent pitch throughout presentation.")
+    
+    if not tips:
+        tips.append("✅ Excellent pace control! Maintain consistent phrasing and intentional 0.5-1.0s pauses.")
+    
+    return tips
+
+# ---------- ENHANCED SUGGESTION GENERATION SYSTEM ----------
+def generate_actionable_suggestions(features: Dict[str, Any]) -> Dict[str, Any]:
+    """Generate comprehensive, actionable suggestions for speech improvement"""
+    
+    suggestions = {
+        "critical_issues": [],
+        "major_improvements": [],
+        "minor_refinements": [],
+        "practice_exercises": [],
+        "immediate_actions": [],
+        "long_term_goals": [],
+        "toastmasters_tips": [],
+        "confidence_builders": []
+    }
+    
+    # 🚨 CRITICAL ISSUES (Immediate attention required)
+    if features.get("pause_ratio", 0) > 0.15:
+        suggestions["critical_issues"].append({
+            "issue": "Excessive pause time",
+            "current": f"{features['pause_ratio']:.1%}",
+            "target": "8-12%",
+            "action": "Reduce unnecessary pauses by 30-40%",
+            "impact": "High - affects audience engagement and professional image"
+        })
+    
+    if features.get("wpm_cv", 0) > 0.4:
+        suggestions["critical_issues"].append({
+            "issue": "Very inconsistent pace",
+            "current": f"{features.get('wpm_cv', 0):.2f}",
+            "target": "<0.25",
+            "action": "Practice with metronome at steady WPM for 15 minutes daily",
+            "impact": "High - makes speech hard to follow"
+        })
+    
+    if features.get("long_count", 0) > 6:
+        suggestions["critical_issues"].append({
+            "issue": "Too many long pauses",
+            "current": f"{features.get('long_count', 0)}",
+            "target": "<4",
+            "action": "Use transition phrases and signposting to bridge gaps",
+            "impact": "High - creates awkward silences"
+        })
+    
+    # ⚠️ MAJOR IMPROVEMENTS (Significant impact)
+    if features.get("contextual_pause_score", 0) < 0.0:
+        suggestions["major_improvements"].append({
+            "issue": "Poor pause context",
+            "current": f"{features.get('contextual_pause_score', 0):.2f}",
+            "target": ">0.5",
+            "action": "Study pause timing in professional speeches (TED Talks, Toastmasters)",
+            "impact": "Medium - affects speech effectiveness"
+        })
+    
+    if features.get("pause_rhythm_consistency", 1.0) < 0.5:
+        suggestions["major_improvements"].append({
+            "issue": "Inconsistent pause rhythm",
+            "current": f"{features.get('pause_rhythm_consistency', 1.0):.2f}",
+            "target": ">0.7",
+            "action": "Practice with rhythmic patterns: short-short-long, short-long-short",
+            "impact": "Medium - affects speech flow"
+        })
+    
+    # 💡 MINOR REFINEMENTS (Polish and enhancement)
+    if features.get("golden_ratio_pauses", 0.0) < 0.3:
+        suggestions["minor_refinements"].append({
+            "issue": "Missing natural speech rhythms",
+            "current": f"{features.get('golden_ratio_pauses', 0.0):.1%}",
+            "target": ">30%",
+            "action": "Incorporate 1.618x longer pauses at key moments",
+            "impact": "Low - enhances naturalness"
+        })
+    
+    if features.get("pause_entropy", 0.0) > 0.8:
+        suggestions["minor_refinements"].append({
+            "issue": "Too random pause patterns",
+            "current": f"{features.get('pause_entropy', 0.0):.2f}",
+            "target": "<0.6",
+            "action": "Create intentional pause patterns: emphasis, transition, breathing",
+            "impact": "Low - improves predictability"
+        })
+    
+    # 🏋️ PRACTICE EXERCISES (Specific training)
+    if features.get("wpm_jerk", 0) > 5:
+        suggestions["practice_exercises"].append({
+            "exercise": "Smooth Pace Transitions",
+            "duration": "10 minutes daily",
+            "method": "Read text starting at 120 WPM, gradually increase to 150 WPM over 30 seconds, then decrease back",
+            "goal": "Eliminate sudden speed changes",
+            "frequency": "Daily for 2 weeks"
+        })
+    
+    if features.get("rhythm_outliers", 0) >= 3:
+        suggestions["practice_exercises"].append({
+            "exercise": "Consistent Segment Timing",
+            "duration": "15 minutes daily",
+            "method": "Practice speaking in 10-second segments with consistent timing",
+            "goal": "Reduce timing variations",
+            "frequency": "Daily for 3 weeks"
+        })
+    
+    # ⚡ IMMEDIATE ACTIONS (Can do today)
+    suggestions["immediate_actions"].extend([
+        {
+            "action": "Record yourself speaking for 2 minutes",
+            "focus": "Pause timing and rhythm",
+            "time_required": "5 minutes",
+            "expected_outcome": "Baseline measurement"
+        },
+        {
+            "action": "Practice 3 transition phrases",
+            "focus": "Smooth topic changes",
+            "time_required": "10 minutes",
+            "expected_outcome": "Better flow between ideas"
+        }
+    ])
+    
+    # 🎯 LONG-TERM GOALS (3-6 months)
+    suggestions["long_term_goals"].extend([
+        {
+            "goal": "Achieve Toastmasters compliance",
+            "target_score": ">0.8",
+            "timeline": "3 months",
+            "milestones": ["Week 4: 0.6", "Week 8: 0.7", "Week 12: 0.8"]
+        },
+        {
+            "goal": "Master pause patterns",
+            "target_consistency": ">0.8",
+            "timeline": "6 months",
+            "milestones": ["Month 2: Basic patterns", "Month 4: Advanced rhythms", "Month 6: Mastery"]
+        }
+    ])
+    
+    # 🏆 TOASTMASTERS SPECIFIC TIPS
+    toastmasters_score = features.get("toastmasters_compliance_score", 0.0)
+    if toastmasters_score < 0.6:
+        suggestions["toastmasters_tips"].extend([
+            "Join a local Toastmasters club for structured practice",
+            "Use the Competent Communicator manual for systematic improvement",
+            "Practice Table Topics to improve spontaneous speaking",
+            "Record and analyze your speeches monthly"
+        ])
+    elif toastmasters_score < 0.8:
+        suggestions["toastmasters_tips"].extend([
+            "Work on Advanced Communication Series projects",
+            "Focus on vocal variety and body language",
+            "Practice with different speech types (informative, persuasive, entertaining)",
+            "Seek feedback from experienced Toastmasters"
+        ])
+    
+    # 💪 CONFIDENCE BUILDERS
+    if features.get("confidence_score", 1.0) < 0.8:
+        suggestions["confidence_builders"].extend([
+            "Practice in front of a mirror to build comfort",
+            "Start with familiar topics to reduce anxiety",
+            "Use power poses before speaking",
+            "Focus on breathing exercises to calm nerves"
+        ])
+    
+    return suggestions
+
+def generate_personalized_feedback(features: Dict[str, Any]) -> str:
+    """Generate personalized, actionable feedback based on analysis results"""
+    
+    suggestions = generate_actionable_suggestions(features)
+    
+    feedback = "🎯 PERSONALIZED SPEECH IMPROVEMENT PLAN\n"
+    feedback += "=" * 50 + "\n\n"
+    
+    # Overall Assessment
+    toastmasters_score = features.get("toastmasters_compliance_score", 0.0)
+    if toastmasters_score >= 0.8:
+        feedback += "🏆 EXCELLENT! You're meeting Toastmasters standards.\n"
+    elif toastmasters_score >= 0.6:
+        feedback += "👍 GOOD! You're on the right track with room for improvement.\n"
+    else:
+        feedback += "📈 NEEDS WORK! Focus on fundamental improvements first.\n"
+    
+    feedback += f"Current Toastmasters Score: {toastmasters_score:.1%}\n\n"
+    
+    # Critical Issues
+    if suggestions["critical_issues"]:
+        feedback += "🚨 CRITICAL ISSUES (Address Immediately):\n"
+        for issue in suggestions["critical_issues"]:
+            feedback += f"• {issue['issue']}: {issue['current']} → {issue['target']}\n"
+            feedback += f"  Action: {issue['action']}\n"
+            feedback += f"  Impact: {issue['impact']}\n\n"
+    
+    # Major Improvements
+    if suggestions["major_improvements"]:
+        feedback += "⚠️ MAJOR IMPROVEMENTS (Focus This Week):\n"
+        for improvement in suggestions["major_improvements"]:
+            feedback += f"• {improvement['issue']}: {improvement['current']} → {improvement['target']}\n"
+            feedback += f"  Action: {improvement['action']}\n"
+            feedback += f"  Impact: {improvement['impact']}\n\n"
+    
+    # Practice Exercises
+    if suggestions["practice_exercises"]:
+        feedback += "🏋️ PRACTICE EXERCISES:\n"
+        for exercise in suggestions["practice_exercises"]:
+            feedback += f"• {exercise['exercise']}\n"
+            feedback += f"  Duration: {exercise['duration']}\n"
+            feedback += f"  Method: {exercise['method']}\n"
+            feedback += f"  Goal: {exercise['goal']}\n"
+            feedback += f"  Frequency: {exercise['frequency']}\n\n"
+    
+    # Immediate Actions
+    if suggestions["immediate_actions"]:
+        feedback += "⚡ IMMEDIATE ACTIONS (Do Today):\n"
+        for action in suggestions["immediate_actions"]:
+            feedback += f"• {action['action']}\n"
+            feedback += f"  Focus: {action['focus']}\n"
+            feedback += f"  Time: {action['time_required']}\n"
+            feedback += f"  Outcome: {action['expected_outcome']}\n\n"
+    
+    # Long-term Goals
+    if suggestions["long_term_goals"]:
+        feedback += "🎯 LONG-TERM GOALS (3-6 Months):\n"
+        for goal in suggestions["long_term_goals"]:
+            feedback += f"• {goal['goal']}\n"
+            feedback += f"  Target: {goal['target_score']}\n"
+            feedback += f"  Timeline: {goal['timeline']}\n"
+            feedback += f"  Milestones: {' → '.join(goal['milestones'])}\n\n"
+    
+    # Toastmasters Tips
+    if suggestions["toastmasters_tips"]:
+        feedback += "🏆 TOASTMASTERS TIPS:\n"
+        for tip in suggestions["toastmasters_tips"]:
+            feedback += f"• {tip}\n"
+        feedback += "\n"
+    
+    # Confidence Builders
+    if suggestions["confidence_builders"]:
+        feedback += "💪 CONFIDENCE BUILDERS:\n"
+        for builder in suggestions["confidence_builders"]:
+            feedback += f"• {builder}\n"
+        feedback += "\n"
+    
+    # Progress Tracking
+    feedback += "📊 PROGRESS TRACKING:\n"
+    feedback += "• Record your speech weekly and compare metrics\n"
+    feedback += "• Focus on 1-2 improvements at a time\n"
+    feedback += "• Celebrate small wins to maintain motivation\n"
+    feedback += "• Reassess every 2 weeks to track improvement\n\n"
+    
+    feedback += "🎉 Remember: Every great speaker started somewhere. Focus on progress, not perfection!"
+    
+    return feedback
+
+def identify_improvement_areas(f: Dict[str, Any]) -> List[str]:
+    """Identify specific areas that need improvement"""
+    areas = []
+    
+    if f["pause_ratio"] > 0.10:
+        areas.append("Pause Management")
+    if f["wpm_cv"] > 0.25:
+        areas.append("Pace Consistency")
+    if f.get("wpm_jerk", 0) > 5:
+        areas.append("Pace Stability")
+    if f["rhythm_outliers"] >= 3:
+        areas.append("Rhythm Control")
+    if f.get("speech_continuity", 1.0) < 0.8:
+        areas.append("Speech Flow")
+    if f.get("pause_pattern_regularity", 1.0) < 0.6:
+        areas.append("Pause Patterns")
+    if f["speaking_efficiency"] < 0.8:
+        areas.append("Speaking Efficiency")
+    if f.get("jitter_local", 0) > 0.02:
+        areas.append("Voice Stability")
+    if f.get("pitch_std", 0) > 50:
+        areas.append("Pitch Control")
+    
+    return areas if areas else ["All areas performing well"]
+
+def predict_file(path: str, model_path="enhanced_pause_model.joblib", cfg_path="enhanced_pause_features.json") -> EnhancedPrediction:
+    """Enhanced prediction with confidence and improvement areas"""
+    try:
+        pipe = joblib.load(model_path)
+    except:
+        print("Model not found. Please train the model first.")
+        return None
+        
+    with open(cfg_path, "r") as f:
+        meta = json.load(f)
+    X_cols = meta["feature_order"]
+
+    feats = pause_features_for_file(path)
+    # add dist columns
+    n_bins = len(feats["long_pause_distribution"])
+    for i in range(n_bins):
+        feats[f"long_dist_{i}"] = feats["long_pause_distribution"][i]
+    # ensure every expected feature exists
+    for c in X_cols:
+        if c not in feats:
+            feats[c] = 0.0
+
+    x = np.array([feats[c] for c in X_cols]).reshape(1, -1)
+    proba = pipe.predict_proba(x)[0]
+    label = pipe.classes_[np.argmax(proba)]
+    confidence = float(np.max(proba))
+    probs = {cls: float(p) for cls, p in zip(pipe.classes_, proba)}
+    
+    tips = suggest_from_features(feats)
+    improvement_areas = identify_improvement_areas(feats)
+    
+    return EnhancedPrediction(
+        label=label, 
+        probs=probs, 
+        suggestions=tips, 
+        features=feats,
+        confidence=confidence,
+        improvement_areas=improvement_areas
+    )
+
+# ---------- Real-time feedback system ----------
+def generate_real_time_feedback(prediction: EnhancedPrediction) -> str:
+    """Generate real-time feedback for presenters using enhanced suggestion system"""
+    
+    # Generate comprehensive suggestions
+    suggestions = generate_actionable_suggestions(prediction.features)
+    
+    feedback = f"🎯 SPEECH PACE ANALYSIS - REAL-TIME FEEDBACK\n"
+    feedback += f"Overall Assessment: {prediction.label.replace('_', ' ').title()}\n"
+    feedback += f"Confidence: {prediction.confidence:.1%}\n\n"
+    
+    # Toastmasters Compliance
+    toastmasters_score = prediction.features.get("toastmasters_compliance_score", 0.0)
+    feedback += f"🏆 TOASTMASTERS COMPLIANCE: {toastmasters_score:.1%}\n"
+    if toastmasters_score >= 0.8:
+        feedback += "Status: EXCELLENT - Meeting industry standards! 🎉\n"
+    elif toastmasters_score >= 0.6:
+        feedback += "Status: GOOD - On track with room for improvement 👍\n"
+    else:
+        feedback += "Status: NEEDS WORK - Focus on fundamentals 📈\n"
+    feedback += "\n"
+    
+    # Key Metrics Summary
+    feedback += "📊 KEY METRICS:\n"
+    f = prediction.features
+    
+    # Core metrics with targets
+    feedback += f"• Pause Ratio: {f['pause_ratio']:.1%} (Target: 8-12%) "
+    if 0.08 <= f['pause_ratio'] <= 0.12:
+        feedback += "✅"
+    elif f['pause_ratio'] > 0.15:
+        feedback += "🚨"
+    else:
+        feedback += "⚠️"
+    feedback += "\n"
+    
+    feedback += f"• Long Pauses: {f['long_count']} (Target: <4) "
+    if f['long_count'] < 4:
+        feedback += "✅"
+    elif f['long_count'] > 6:
+        feedback += "🚨"
+    else:
+        feedback += "⚠️"
+    feedback += "\n"
+    
+    feedback += f"• Pace Consistency: {1-f['wpm_cv']:.1%} (Target: >75%) "
+    if 1-f['wpm_cv'] > 0.75:
+        feedback += "✅"
+    elif 1-f['wpm_cv'] < 0.6:
+        feedback += "🚨"
+    else:
+        feedback += "⚠️"
+    feedback += "\n"
+    
+    feedback += f"• Speech Flow: {f.get('speech_continuity', 1.0):.1%} (Target: >80%) "
+    if f.get('speech_continuity', 1.0) > 0.8:
+        feedback += "✅"
+    elif f.get('speech_continuity', 1.0) < 0.6:
+        feedback += "🚨"
+    else:
+        feedback += "⚠️"
+    feedback += "\n"
+    
+    # Novel features
+    if 'contextual_pause_score' in f:
+        feedback += f"• Contextual Pause Score: {f['contextual_pause_score']:.2f} (Target: >0.5) "
+        if f['contextual_pause_score'] > 0.5:
+            feedback += "✅"
+        elif f['contextual_pause_score'] < 0.0:
+            feedback += "🚨"
+        else:
+            feedback += "⚠️"
+        feedback += "\n"
+    
+    if 'pause_rhythm_consistency' in f:
+        feedback += f"• Rhythm Consistency: {f['pause_rhythm_consistency']:.1%} (Target: >70%) "
+        if f['pause_rhythm_consistency'] > 0.7:
+            feedback += "✅"
+        elif f['pause_rhythm_consistency'] < 0.4:
+            feedback += "🚨"
+        else:
+            feedback += "⚠️"
+        feedback += "\n"
+    
+    feedback += "\n"
+    
+    # Priority-based suggestions
+    if suggestions["critical_issues"]:
+        feedback += "🚨 IMMEDIATE ACTIONS NEEDED:\n"
+        for issue in suggestions["critical_issues"][:2]:  # Show top 2 critical issues
+            feedback += f"• {issue['issue']}: {issue['action']}\n"
+        feedback += "\n"
+    
+    if suggestions["major_improvements"]:
+        feedback += "⚠️ THIS WEEK'S FOCUS:\n"
+        for improvement in suggestions["major_improvements"][:2]:  # Show top 2 improvements
+            feedback += f"• {improvement['issue']}: {improvement['action']}\n"
+        feedback += "\n"
+    
+    if suggestions["immediate_actions"]:
+        feedback += "⚡ DO TODAY:\n"
+        for action in suggestions["immediate_actions"][:2]:  # Show top 2 immediate actions
+            feedback += f"• {action['action']} ({action['time_required']})\n"
+        feedback += "\n"
+    
+    # Quick wins
+    feedback += "💡 QUICK WINS:\n"
+    if f.get('contextual_pause_score', 0) < 0.0:
+        feedback += "• Practice 1.5-2.0s pauses between topics\n"
+    if f.get('emphasis_pause_count', 0) < 3:
+        feedback += "• Add 0.5-1.0s pauses for key points\n"
+    if f.get('pause_rhythm_consistency', 1.0) < 0.6:
+        feedback += "• Use consistent timing patterns\n"
+    
+    feedback += "\n"
+    feedback += "📱 For detailed improvement plan, check the full analysis report.\n"
+    feedback += "🔄 Re-record in 1 week to track progress!"
+    
+    return feedback
+
+def generate_comprehensive_report(features: Dict[str, Any]) -> str:
+    """Generate a comprehensive report with all suggestions and analysis"""
+    
+    # Get personalized feedback
+    personalized_feedback = generate_personalized_feedback(features)
+    
+    # Add technical analysis
+    report = personalized_feedback + "\n\n"
+    report += "🔬 TECHNICAL ANALYSIS DETAILS\n"
+    report += "=" * 50 + "\n\n"
+    
+    # Advanced metrics
+    report += "📊 ADVANCED METRICS:\n"
+    report += f"• WPM Coefficient of Variation: {features.get('wpm_cv', 0):.3f}\n"
+    report += f"• WPM Delta Standard Deviation: {features.get('wpm_delta_std', 0):.2f}\n"
+    report += f"• WPM Jerk (Acceleration Changes): {features.get('wpm_jerk', 0):.2f}\n"
+    report += f"• Rhythm Outliers: {features.get('rhythm_outliers', 0)}\n"
+    report += f"• Speaking Efficiency: {features.get('speaking_efficiency', 0):.1%}\n"
+    report += f"• Pause Efficiency: {features.get('pause_efficiency', 0):.2f}s\n\n"
+    
+    # Novel features analysis
+    if 'contextual_pause_score' in features:
+        report += "🎭 CONTEXTUAL ANALYSIS:\n"
+        report += f"• Contextual Pause Score: {features['contextual_pause_score']:.3f}\n"
+        report += f"• Transition Pauses: {features.get('transition_pause_count', 0)}\n"
+        report += f"• Emphasis Pauses: {features.get('emphasis_pause_count', 0)}\n"
+        report += f"• Optimal Transition Ratio: {features.get('optimal_transition_ratio', 0):.1%}\n"
+        report += f"• Optimal Emphasis Ratio: {features.get('optimal_emphasis_ratio', 0):.1%}\n\n"
+    
+    if 'pause_rhythm_consistency' in features:
+        report += "🎵 RHYTHM ANALYSIS:\n"
+        report += f"• Rhythm Consistency: {features['pause_rhythm_consistency']:.3f}\n"
+        report += f"• Golden Ratio Pauses: {features.get('golden_ratio_pauses', 0):.1%}\n"
+        report += f"• Pause Entropy: {features.get('pause_entropy', 0):.3f}\n"
+        report += f"• Pause Autocorrelation: {features.get('pause_autocorrelation', 0):.3f}\n\n"
+    
+    if 'cognitive_pause_score' in features:
+        report += "🧠 COGNITIVE ANALYSIS:\n"
+        report += f"• Cognitive Pause Score: {features['cognitive_pause_score']:.3f}\n"
+        report += f"• Memory Retrieval Pauses: {features.get('memory_retrieval_pauses', 0)}\n"
+        report += f"• Confidence Score: {features.get('confidence_score', 0):.3f}\n"
+        report += f"• Optimal Cognitive Pause Ratio: {features.get('optimal_cognitive_pause_ratio', 0):.1%}\n\n"
+    
+    if 'pause_fractal_dimension' in features:
+        report += "📊 STATISTICAL ANALYSIS:\n"
+        report += f"• Fractal Dimension: {features.get('pause_fractal_dimension', 0):.3f}\n"
+        report += f"• Spectral Density: {features.get('pause_spectral_density', 0):.3f}\n"
+        report += f"• Trend Analysis: {features.get('pause_trend_analysis', 0):.3f}\n"
+        report += f"• Pause Volatility: {features.get('pause_volatility', 0):.3f}\n\n"
+    
+    # Voice quality metrics
+    report += "🎤 VOICE QUALITY METRICS:\n"
+    report += f"• Pitch Standard Deviation: {features.get('pitch_std', 0):.1f} Hz\n"
+    report += f"• Jitter (Local): {features.get('jitter_local', 0):.4f}\n"
+    report += f"• Shimmer (Local): {features.get('shimmer_local', 0):.3f}\n"
+    report += f"• Harmonic-to-Noise Ratio: {features.get('hnr_mean', 0):.2f}\n\n"
+    
+    # Recommendations summary
+    report += "🎯 RECOMMENDATIONS SUMMARY:\n"
+    report += "=" * 50 + "\n"
+    
+    suggestions = generate_actionable_suggestions(features)
+    
+    if suggestions["critical_issues"]:
+        report += f"🚨 Critical Issues: {len(suggestions['critical_issues'])} (Address immediately)\n"
+    if suggestions["major_improvements"]:
+        report += f"⚠️ Major Improvements: {len(suggestions['major_improvements'])} (Focus this week)\n"
+    if suggestions["minor_refinements"]:
+        report += f"💡 Minor Refinements: {len(suggestions['minor_refinements'])} (Polish and enhance)\n"
+    if suggestions["practice_exercises"]:
+        report += f"🏋️ Practice Exercises: {len(suggestions['practice_exercises'])} (Daily training)\n"
+    
+    report += "\n"
+    report += "📈 EXPECTED IMPROVEMENT TIMELINE:\n"
+    report += "• Week 1-2: Address critical issues\n"
+    report += "• Week 3-4: Implement major improvements\n"
+    report += "• Month 2-3: Focus on refinements\n"
+    report += "• Month 4-6: Master advanced techniques\n\n"
+    
+    report += "🎉 Keep practicing and recording to track your progress!"
+    
+    return report

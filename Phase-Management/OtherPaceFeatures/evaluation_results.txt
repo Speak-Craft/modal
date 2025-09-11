@@ -1,0 +1,19 @@
+SPEECH PACE MANAGEMENT MODEL EVALUATION RESULTS
+==================================================
+
+Model Type: RandomForest
+Dataset Size: 829
+Number of Features: 172
+Number of Classes: 4
+
+PERFORMANCE METRICS:
+Accuracy: 1.0000
+Precision (Macro): 1.0000
+Recall (Macro): 1.0000
+F1-Score (Macro): 1.0000
+
+CLASS DISTRIBUTION:
+poor_pause_control: 528
+needs_pause_improvement: 242
+inconsistent_pace: 57
+good_pace_control: 2
