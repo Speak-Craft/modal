@@ -54,11 +54,11 @@ def create_unified_app() -> FastAPI:
     """Create a FastAPI app that mounts both sub-apps on a single server/port."""
     base_dir = Path(__file__).resolve().parent
 
-    # Paths to the two services
-    other_pace_dir = base_dir / "OtherPaceFeatures"
+    # Paths to the two services (moved under Phase-Management)
+    other_pace_dir = base_dir / "Phase-Management" / "OtherPaceFeatures"
     other_pace_app_path = other_pace_dir / "app.py"
 
-    rate_dir = base_dir / "speech-rate-detection"
+    rate_dir = base_dir / "Phase-Management" / "speech-rate-detection"
     rate_app_path = rate_dir / "test.py"
 
     # Import sub-apps
