@@ -159,9 +159,9 @@ def create_unified_app() -> FastAPI:
     async def _compat_predict_filler_words():  # type: ignore[misc]
         return RedirectResponse(url="/filler/predict-filler-words", status_code=307)
 
-    @unified.post("/predict-loudness")
+    @unified.post("/predict-loudness/")
     async def _compat_predict_loudness():  # type: ignore[misc]
-        return RedirectResponse(url="/loudness/predict-loudness", status_code=307)
+        return RedirectResponse(url="/loudness/predict-loudness/", status_code=307)
 
     @unified.get("/")
     def root():  # type: ignore[misc]
@@ -191,7 +191,7 @@ def create_unified_app() -> FastAPI:
                 "loudness": {
                     "base_path": "/loudness",
                     "endpoints": [
-                        "/loudness/predict-loudness",
+                        "/loudness/predict-loudness/",
                     ],
                 },
             },

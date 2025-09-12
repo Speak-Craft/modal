@@ -17,6 +17,9 @@ from typing import Dict, Any, List
 from dataclasses import dataclass
 import logging
 
+# Import activity endpoints
+from activity_endpoints import router as activity_router
+
 app = FastAPI()
 
 # CORS for the React frontend pornt no 8000 is connected 
@@ -27,6 +30,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include activity router
+app.include_router(activity_router)
 
 # Import your feature extraction functions
 from feature_extraction2 import (
