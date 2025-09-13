@@ -1,13 +1,11 @@
 import librosa
-import whisper
 import numpy as np
 from joblib import load
 import noisereduce as nr
 import soundfile as sf
 from typing import Tuple, List, Dict, Any
 
-# Load shared models once per process
-model = whisper.load_model("base")
+model = None
 clf = load("./mlp_classifier.pkl")
 scaler = load("./scaler.pkl")
 
@@ -23,6 +21,10 @@ def denoise_wav_to_path(input_path: str) -> str:
 
 def transcribe_and_pacing(path: str) -> Tuple[str, List[Dict[str, float]], List[float]]:
     """Transcribe with Whisper and compute per-segment WPM bins and pacing curve."""
+    global model
+    if model is None:
+        import whisper
+        model = whisper.load_model("base")
     result = model.transcribe(path, word_timestamps=True)
     transcription = result.get("text", "").strip()
     segments = result.get("segments", [])

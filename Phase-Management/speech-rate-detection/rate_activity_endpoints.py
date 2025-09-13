@@ -8,7 +8,7 @@ import soundfile as sf
 import numpy as np
 from typing import Dict
 
-from .rate_core import denoise_wav_to_path, transcribe_and_pacing, classify_rate
+from rate_core import denoise_wav_to_path, transcribe_and_pacing, classify_rate
 
 router = APIRouter()
 

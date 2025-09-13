@@ -1,7 +1,6 @@
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 import librosa
-import whisper
 import numpy as np
 from joblib import load
 import uvicorn
@@ -9,7 +8,7 @@ import tempfile
 import os
 import noisereduce as nr
 import soundfile as sf 
-from .rate_activity_endpoints import router as rate_activity_router
+from rate_activity_endpoints import router as rate_activity_router
 
 
 app = FastAPI()
@@ -31,7 +30,7 @@ Keep existing /rate-analysis/ endpoint as-is, but mount new rate activity routes
 """
 
 # Load models (leave for /rate-analysis/ path)
-model = whisper.load_model("base")
+model = None
 clf = load("./mlp_classifier.pkl")
 scaler = load("./scaler.pkl")
 
@@ -212,6 +211,10 @@ def generate_enhanced_feedback(wpm, consistency_score, pacing_curve, duration, w
 @app.post("/rate-analysis/")
 async def analyze_audio(file: UploadFile = File(...)):
     try:
+        global model
+        if model is None:
+            import whisper
+            model = whisper.load_model("base")
         # Save uploaded audio to a temporary .wav file
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
             tmp.write(await file.read())

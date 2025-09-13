@@ -1,8 +1,6 @@
 # feature_extraction2.py - Enhanced Feature Extraction for Speech Pace Management
 import os, json, joblib, numpy as np, pandas as pd
-import librosa, whisper
-import parselmouth
-from parselmouth.praat import call
+import librosa
 from typing import List, Dict, Any, Tuple
 from dataclasses import dataclass
 import warnings
@@ -63,6 +61,7 @@ MFCC_FEATURES = [f"mfcc_{i}_mean" for i in range(13)] + [f"mfcc_{i}_std" for i i
 
 # ---------- Transcription ----------
 def transcribe_with_words(path: str):
+    import whisper  # Lazy import to avoid heavy dependency at module import time
     model = whisper.load_model(MODEL_NAME)
     res = model.transcribe(path, word_timestamps=True, verbose=False)
     segs = res.get("segments", [])

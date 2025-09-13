@@ -1,7 +1,6 @@
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 import librosa
-import whisper
 from joblib import load
 import os
 import noisereduce as nr
