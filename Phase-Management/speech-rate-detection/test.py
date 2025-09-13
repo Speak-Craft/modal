@@ -9,6 +9,7 @@ import tempfile
 import os
 import noisereduce as nr
 import soundfile as sf 
+from .rate_activity_endpoints import router as rate_activity_router
 
 
 app = FastAPI()
@@ -22,7 +23,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load models
+# Mount activity router for rate-related activities
+app.include_router(rate_activity_router)
+
+"""
+Keep existing /rate-analysis/ endpoint as-is, but mount new rate activity routes under this app.
+"""
+
+# Load models (leave for /rate-analysis/ path)
 model = whisper.load_model("base")
 clf = load("./mlp_classifier.pkl")
 scaler = load("./scaler.pkl")

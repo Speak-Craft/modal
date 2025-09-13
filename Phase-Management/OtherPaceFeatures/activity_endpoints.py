@@ -301,6 +301,9 @@ def check_badge_eligibility(features: Dict, activity_type: str) -> List[Dict]:
             threshold = requirements[metric_name]
             threshold_type = requirements.get('threshold', 'greater_equal')
             
+            # Only evaluate when the metric is present to avoid accidental awards
+            if metric_name not in features:
+                continue
             metric_value = features.get(metric_name, 0)
             eligible = False
             
@@ -397,10 +400,30 @@ async def real_time_analysis(request: Dict):
         }
         
         activity_data = mock_scores.get(activity_type, {'score': 70, 'feedback': 'Analysis in progress'})
+        # Estimate target duration per activity for progress computation
+        target_seconds_map = {
+            'pacing_curve': 180,            # 2-3 min
+            'rate_match': 120,              # 1-2 min
+            'speed_shift': 120,             # 1-2 min
+            'consistency_tracker': 300,     # 3-5 min
+            'pause_timing': 120,
+            'excessive_pause_elimination': 120,
+            'pause_for_impact': 120,
+            'pause_rhythm': 120,
+            'confidence_pause': 120,
+            'golden_ratio': 180,
+            'pause_entropy': 180,
+            'cognitive_pause': 180
+        }
+        target_seconds = target_seconds_map.get(activity_type, 120)
+        progress = max(0.0, min(100.0, (float(duration) / float(target_seconds)) * 100.0))
         
         return JSONResponse({
             'success': True,
             'score': activity_data['score'],
+            'targetScore': 100,
+            'progress': progress,
+            'metrics': {},
             'feedback': activity_data['feedback'],
             'timestamp': timestamp,
             'duration': duration,
@@ -433,12 +456,48 @@ async def analyze_activity(file: UploadFile = File(...), activityType: str = Non
             temp_path = temp_file.name
         
         try:
-            # Extract comprehensive features
-            features = extract_advanced_features(temp_path)
+            # Extract comprehensive features (includes WPM, pause metrics, novel features)
+            features = pause_features_for_file(temp_path)
         finally:
             # Clean up temporary file
             os.unlink(temp_path)
         
+        # Derive and normalize commonly needed metrics
+        wpm_std = float(features.get('wpm_std', 0.0))
+        wpm_cv = float(features.get('wpm_cv', 0.0))
+        wpm_mean = float(features.get('wpm_mean', 0.0))
+        total_dur = float(features.get('total_duration', len(y) / sr if sr else 0.0))
+        pause_ratio = float(features.get('pause_ratio', 0.0))  # 0..1
+        excessive_count = int(features.get('excessive_count', 0))
+        rhythm_consistency_ratio = float(features.get('pause_rhythm_consistency', 0.0))  # 0..1
+        golden_ratio_pauses = float(features.get('golden_ratio_pauses', 0.0))  # 0..1
+        entropy = float(features.get('pause_entropy', 0.0))  # 0..1
+        contextual_score = float(features.get('contextual_pause_score', 0.0))
+        toastmasters_score = float(features.get('toastmasters_compliance_score', 0.0))  # 0..1
+        cognitive_pause_ratio = float(features.get('cognitive_pause_score', 0.0))  # 0..1
+        optimal_cognitive_ratio = float(features.get('optimal_cognitive_pause_ratio', 0.0))  # 0..1
+        pause_spacing_consistency = float(features.get('pause_spacing_consistency', 0.0))  # 0..1
+        optimal_transition_ratio = float(features.get('optimal_transition_ratio', 0.0))  # 0..1
+        optimal_emphasis_ratio = float(features.get('optimal_emphasis_ratio', 0.0))  # 0..1
+
+        # Computed/normalized values for activity scoring
+        features['wpm_consistency'] = max(0.0, min(100.0, (1.0 - wpm_cv) * 100.0))
+        features['excessive_pauses'] = excessive_count
+        features['rhythm_consistency'] = max(0.0, min(100.0, rhythm_consistency_ratio * 100.0))
+        features['golden_ratio_score'] = golden_ratio_pauses  # 0..1
+        features['entropy_score'] = max(0.0, 1.0 - entropy)  # 0..1
+        # Map contextual score (-inf..+inf approx) to 0..1 for impact
+        impact_norm = max(0.0, min(1.0, (contextual_score + 1.0) / 2.0))
+        features['impact_pause_score'] = impact_norm * 100.0
+        # Heuristic comprehension score proxy from Toastmasters compliance
+        features['comprehension_score'] = max(0.0, min(100.0, toastmasters_score * 100.0))
+        # Pause timing metrics
+        features['optimal_pause_ratio'] = max(0.0, min(1.0, (optimal_transition_ratio + optimal_emphasis_ratio) / 2.0))
+        features['pause_precision'] = max(0.0, min(1.0, pause_spacing_consistency))
+        # Cognitive metrics for cognitive_pause activity
+        features['cognitive_score'] = max(0.0, min(100.0, optimal_cognitive_ratio * 100.0))
+        features['cognitive_pause_score'] = max(0.0, min(100.0, cognitive_pause_ratio * 100.0))
+
         # Calculate activity-specific score
         activity_result = calculate_activity_score(features, activityType)
         
@@ -460,25 +519,38 @@ async def analyze_activity(file: UploadFile = File(...), activityType: str = Non
         
         # Calculate additional metrics
         duration = len(y) / sr
-        word_count = features.get('word_count', 0)
-        average_wpm = features.get('wpm_mean', 0)
+        average_wpm = wpm_mean
         consistency_score = features.get('wpm_consistency', 0)
-        pause_ratio = features.get('pause_ratio', 0)
+        pause_ratio_pct = pause_ratio * 100.0
         
         return JSONResponse({
+            # Common
             'success': True,
-            'activity_type': activityType,
-            'final_score': activity_result['score'],
-            'max_score': activity_result['max_score'],
+            'activityType': activityType,
+            'finalScore': activity_result['score'],
+            'maxScore': activity_result['max_score'],
             'metrics': activity_result['metrics'],
             'duration': duration,
-            'word_count': word_count,
-            'average_wpm': average_wpm,
-            'consistency_score': consistency_score,
-            'pause_ratio': pause_ratio,
+            'averageWPM': average_wpm,
+            'consistencyScore': consistency_score,
+            'pauseRatio': pause_ratio_pct,
             'feedback': feedback,
             'recommendations': recommendations,
-            'new_badges': earned_badges,
+            # Frontend badge helper fields (camelCase)
+            'wpmStd': wpm_std,
+            'consecutiveSessions': 0,
+            'controlledShifts': bool(features.get('wpm_delta_std', 0) < 6.0),
+            'consistencyStreak': 0,
+            'optimalPauseRatio': features.get('optimal_pause_ratio', 0.0),
+            'excessivePauses': excessive_count,
+            'comprehensionScore': features.get('comprehension_score', 0.0),
+            'rhythmConsistency': features.get('rhythm_consistency', 0.0),
+            'fillerCount': features.get('filler_count') if 'filler_count' in features else None,
+            'goldenRatioScore': features.get('golden_ratio_score', 0.0),
+            'entropyScore': entropy,
+            'cognitiveScore': features.get('cognitive_score', 0.0),
+            # Optional badges payload (keeping empty to avoid icon mapping issues on FE)
+            'newBadges': [],
             'timestamp': datetime.now().isoformat()
         })
         

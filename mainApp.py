@@ -151,6 +151,30 @@ def create_unified_app() -> FastAPI:
     async def _compat_pause_analysis():  # type: ignore[misc]
         return RedirectResponse(url="/pause/pause-analysis/", status_code=307)
 
+    # New compatibility routes for activity endpoints used by the Pace Management UI
+    # Compatibility dispatchers that route based on activityType to keep FE paths stable
+    from fastapi import Request
+
+    RATE_ACTIVITY_TYPES = {"pacing_curve", "rate_match", "speed_shift", "consistency_tracker"}
+
+    @unified.post("/real-time-analysis/")
+    async def _compat_real_time_analysis(req: Request):  # type: ignore[misc]
+        body = await req.json()
+        activity_type = body.get("activityType") if isinstance(body, dict) else None
+        if activity_type in RATE_ACTIVITY_TYPES:
+            return RedirectResponse(url="/rate/real-time-analysis/", status_code=307)
+        return RedirectResponse(url="/pause/real-time-analysis/", status_code=307)
+
+    @unified.post("/analyze-activity/")
+    async def _compat_analyze_activity(req: Request):  # type: ignore[misc]
+        # We cannot read form-data here for routing without consuming the stream.
+        # Default route to pause; frontends that need rate can call /rate/analyze-activity/ directly
+        # or send a query param ?scope=rate. If provided, we route accordingly.
+        scope = req.query_params.get("scope")
+        if scope == "rate":
+            return RedirectResponse(url="/rate/analyze-activity/", status_code=307)
+        return RedirectResponse(url="/pause/analyze-activity/", status_code=307)
+
     @unified.post("/generate-suggestions/")
     async def _compat_generate_suggestions():  # type: ignore[misc]
         return RedirectResponse(url="/pause/generate-suggestions/", status_code=307)
@@ -172,6 +196,8 @@ def create_unified_app() -> FastAPI:
                     "base_path": "/pause",
                     "endpoints": [
                         "/pause/pause-analysis/",
+                        "/pause/real-time-analysis/",
+                        "/pause/analyze-activity/",
                         "/pause/test",
                         "/pause/test-features/",
                     ],
@@ -180,6 +206,8 @@ def create_unified_app() -> FastAPI:
                     "base_path": "/rate",
                     "endpoints": [
                         "/rate/rate-analysis/",
+                        "/rate/real-time-analysis/",
+                        "/rate/analyze-activity/",
                     ],
                 },
                 "filler_words": {
