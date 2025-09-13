@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form, Request
 from fastapi.responses import JSONResponse
 import numpy as np
 import librosa
@@ -12,6 +12,7 @@ import pickle
 import os
 import soundfile as sf
 import tempfile
+import subprocess
 
 router = APIRouter()
 
@@ -434,33 +435,87 @@ async def real_time_analysis(request: Dict):
         raise HTTPException(status_code=500, detail=f"Real-time analysis error: {str(e)}")
 
 @router.post("/analyze-activity/")
-async def analyze_activity(file: UploadFile = File(...), activityType: str = None):
+async def analyze_activity(request: Request, file: UploadFile = File(...), activityType: str = Form(None)):
     """Analyze completed activity and provide comprehensive results"""
     try:
         if not activityType:
-            raise HTTPException(status_code=400, detail="Activity type required")
+            # Fallbacks: alternative form keys, query params, or header
+            try:
+                form = await request.form()
+                activityType = (
+                    form.get('activityType')
+                    or form.get('activity_type')
+                    or form.get('activity')
+                )
+            except Exception:
+                activityType = None
+            # Query params fallback
+            if not activityType:
+                qp = request.query_params
+                activityType = (
+                    qp.get('activityType')
+                    or qp.get('activity_type')
+                    or qp.get('activity')
+                )
+            # Header fallback
+            if not activityType:
+                activityType = request.headers.get('x-activity-type')
+        if not activityType:
+            # Default to a safe pause activity to avoid client failures
+            activityType = 'pause_timing'
         
         if activityType not in ACTIVITY_TYPES:
             raise HTTPException(status_code=400, detail="Invalid activity type")
         
-        # Read audio file
-        audio_data = await file.read()
-        audio_io = io.BytesIO(audio_data)
-        
-        # Load audio with librosa
-        y, sr = librosa.load(audio_io, sr=16000)
-        
-        # Save audio to temporary file for feature extraction
-        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
-            sf.write(temp_file.name, y, sr)
-            temp_path = temp_file.name
+        # Persist upload to a temporary file on disk with the original extension
+        original_ext = os.path.splitext(getattr(file, 'filename', '') or '')[1].lower() or '.webm'
+        with tempfile.NamedTemporaryFile(suffix=original_ext, delete=False) as src_file:
+            src_bytes = await file.read()
+            src_file.write(src_bytes)
+            src_path = src_file.name
+
+        # Determine analysis path; convert to wav if needed or if direct load fails
+        analysis_path = src_path
+        try:
+            # Try direct load first (librosa may use audioread/ffmpeg under the hood)
+            y, sr = librosa.load(analysis_path, sr=16000)
+        except Exception:
+            # Convert to wav via ffmpeg CLI as a robust fallback
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as wav_file:
+                wav_path = wav_file.name
+            try:
+                subprocess.run([
+                    'ffmpeg', '-y', '-i', src_path,
+                    '-ac', '1', '-ar', '16000', wav_path
+                ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                analysis_path = wav_path
+                y, sr = librosa.load(analysis_path, sr=16000)
+            except Exception as conv_err:
+                # Cleanup and raise a clear error
+                try:
+                    os.unlink(src_path)
+                except Exception:
+                    pass
+                try:
+                    os.unlink(wav_path)
+                except Exception:
+                    pass
+                raise HTTPException(status_code=400, detail=f"Unsupported audio format. Please upload WAV/WEBM/OGG. ({conv_err})")
         
         try:
-            # Extract comprehensive features (includes WPM, pause metrics, novel features)
-            features = pause_features_for_file(temp_path)
+            # Extract comprehensive features from the analysis path
+            features = pause_features_for_file(analysis_path)
         finally:
-            # Clean up temporary file
-            os.unlink(temp_path)
+            # Clean up temporary files
+            try:
+                os.unlink(src_path)
+            except Exception:
+                pass
+            if analysis_path != src_path:
+                try:
+                    os.unlink(analysis_path)
+                except Exception:
+                    pass
         
         # Derive and normalize commonly needed metrics
         wpm_std = float(features.get('wpm_std', 0.0))
@@ -518,7 +573,7 @@ async def analyze_activity(file: UploadFile = File(...), activityType: str = Non
         )
         
         # Calculate additional metrics
-        duration = len(y) / sr
+        duration = len(y) / sr if sr else 0.0
         average_wpm = wpm_mean
         consistency_score = features.get('wpm_consistency', 0)
         pause_ratio_pct = pause_ratio * 100.0
@@ -554,6 +609,9 @@ async def analyze_activity(file: UploadFile = File(...), activityType: str = Non
             'timestamp': datetime.now().isoformat()
         })
         
+    except HTTPException as he:
+        # Propagate explicit HTTP errors (e.g., 400) rather than converting to 500
+        raise he
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Activity analysis error: {str(e)}")
 

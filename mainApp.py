@@ -156,6 +156,16 @@ def create_unified_app() -> FastAPI:
     from fastapi import Request
 
     RATE_ACTIVITY_TYPES = {"pacing_curve", "rate_match", "speed_shift", "consistency_tracker"}
+    PAUSE_ACTIVITY_TYPES = {
+        "pause_timing",
+        "excessive_pause_elimination",
+        "pause_for_impact",
+        "pause_rhythm",
+        "confidence_pause",
+        "golden_ratio",
+        "pause_entropy",
+        "cognitive_pause",
+    }
 
     @unified.post("/real-time-analysis/")
     async def _compat_real_time_analysis(req: Request):  # type: ignore[misc]
@@ -163,16 +173,22 @@ def create_unified_app() -> FastAPI:
         activity_type = body.get("activityType") if isinstance(body, dict) else None
         if activity_type in RATE_ACTIVITY_TYPES:
             return RedirectResponse(url="/rate/real-time-analysis/", status_code=307)
+        if activity_type in PAUSE_ACTIVITY_TYPES:
+            return RedirectResponse(url="/pause/real-time-analysis/", status_code=307)
+        # Fallback: default to pause domain
         return RedirectResponse(url="/pause/real-time-analysis/", status_code=307)
 
     @unified.post("/analyze-activity/")
     async def _compat_analyze_activity(req: Request):  # type: ignore[misc]
-        # We cannot read form-data here for routing without consuming the stream.
-        # Default route to pause; frontends that need rate can call /rate/analyze-activity/ directly
-        # or send a query param ?scope=rate. If provided, we route accordingly.
-        scope = req.query_params.get("scope")
-        if scope == "rate":
+        # Decide based on query param since we cannot read multipart body here
+        qp = req.query_params
+        activity_type = qp.get("activityType") or qp.get("activity_type") or qp.get("activity")
+        scope = qp.get("scope")
+        if scope == "rate" or activity_type in RATE_ACTIVITY_TYPES:
             return RedirectResponse(url="/rate/analyze-activity/", status_code=307)
+        if scope == "pause" or activity_type in PAUSE_ACTIVITY_TYPES:
+            return RedirectResponse(url="/pause/analyze-activity/", status_code=307)
+        # Default to pause
         return RedirectResponse(url="/pause/analyze-activity/", status_code=307)
 
     @unified.post("/generate-suggestions/")
