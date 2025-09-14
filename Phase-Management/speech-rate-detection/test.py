@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, Body
 from fastapi.middleware.cors import CORSMiddleware
 import librosa
 import numpy as np
@@ -207,6 +207,34 @@ def generate_enhanced_feedback(wpm, consistency_score, pacing_curve, duration, w
         "priority_recommendations": priority_recommendations,
         "overall_assessment": f"{pace_emoji} {pace_category} Pace • {consistency_emoji} {consistency_category} Consistency • {flow_emoji} {flow_category} Flow"
     }
+
+@app.post("/generate-rate-feedback/")
+async def generate_rate_feedback(payload: dict = Body(...)):
+    """Generate rate feedback from frontend-provided metrics.
+
+    Expects JSON body with keys: wpm, label, consistencyScore, pacingCurve, duration, wordCount.
+    Returns an object under key `enhancedFeedback` that mirrors the structure used by /rate-analysis/.
+    """
+    try:
+        wpm = float(payload.get("wpm", 0) or 0)
+        label = payload.get("label") or None
+        consistency_score = float(payload.get("consistencyScore", 0) or 0)
+        pacing_curve = payload.get("pacingCurve") or []
+        duration = float(payload.get("duration", 0) or 0)
+        word_count = int(payload.get("wordCount", 0) or 0)
+
+        feedback = generate_enhanced_feedback(
+            wpm=wpm,
+            consistency_score=consistency_score,
+            pacing_curve=pacing_curve,
+            duration=duration,
+            word_count=word_count,
+            model_prediction=label,
+        )
+
+        return {"enhancedFeedback": feedback}
+    except Exception as exc:
+        return {"error": str(exc)}
 
 @app.post("/rate-analysis/")
 async def analyze_audio(file: UploadFile = File(...)):

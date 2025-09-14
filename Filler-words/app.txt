@@ -1,40 +1,24 @@
-from fastapi import FastAPI, File, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
+from flask import Flask, request, jsonify
 import librosa, joblib, numpy as np
 from feature_extractor import extract_features
-import tempfile, os
 
-app = FastAPI()
-
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Load model
+app = Flask(__name__)
 model = joblib.load("filler_detector_model.pkl")
 
-@app.post("/predict-filler-words/")
-async def predict(audio: UploadFile = File(...)):
+@app.route("/predict", methods=["POST"])
+def predict():
     try:
-        print("✅ Request received at /predict-filler-words")
+        print("✅ Request received at /predict")
 
-        if not audio.filename:
-            return {"error": "No audio file found"}
+        if 'audio' not in request.files:
+            return jsonify({"error": "No audio file found"}), 400
 
-        print(f"📄 File received: {audio.filename}")
-        print(f"📄 Content type: {audio.content_type}")
+        file = request.files["audio"]
+        print(f"📄 File received: {file.filename}")
+        print(f"📄 Content type: {file.content_type}")
 
-        # Save uploaded file to temporary location
-        content = await audio.read()
         temp_path = "temp_audio.wav"
-        with open(temp_path, "wb") as f:
-            f.write(content)
+        file.save(temp_path)
         print(f"✅ Saved file to {temp_path}")
 
         y, sr = librosa.load(temp_path, sr=16000)
@@ -64,23 +48,15 @@ async def predict(audio: UploadFile = File(...)):
         print(f"\n✅ Total chunks analyzed: {total_chunks}")
         print(f"🗣️ Estimated filler words in clip: {filler_count}")
 
-        # Clean up temp file
-        try:
-            os.remove(temp_path)
-        except:
-            pass
-
-        return {
+        return jsonify({
             "filler_prediction": filler_count,
             "total_chunks": total_chunks,
             "message": f"Filler word count detected: {filler_count}"
-        }
+        })
 
     except Exception as e:
-        print("❌ Error in FastAPI /predict-filler-words:", str(e))
-        import traceback
-        traceback.print_exc()
-        return {"error": str(e)}
+        print("❌ Error in Flask /predict:", str(e))
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    app.run(host="0.0.0.0", port=5001)

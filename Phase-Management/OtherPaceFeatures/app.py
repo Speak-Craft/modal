@@ -18,6 +18,7 @@ import logging
 
 # Import activity endpoints
 from activity_endpoints import router as activity_router
+from pause_realtime_endpoints import router as pause_realtime_router
 
 app = FastAPI()
 
@@ -32,6 +33,8 @@ app.add_middleware(
 
 # Include activity router
 app.include_router(activity_router)
+# Include real-time pause router
+app.include_router(pause_realtime_router)
 
 # Import your feature extraction functions
 from feature_extraction2 import (

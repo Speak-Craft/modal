@@ -35,7 +35,6 @@ The Pace Management Activities system provides 12 different interactive activiti
 - **No Dead Air** - Zero excessive pauses
 - **Impact Pause** - High comprehension scores
 - **Rhythm Speaker** - 70% rhythm consistency
-- **Confident Voice** - <2 fillers per minute
 - **Golden Ratio Master** - 80% golden ratio compliance
 - **Entropy Controller** - Low pause randomness
 - **Cognitive Master** - 85% cognitive pause effectiveness

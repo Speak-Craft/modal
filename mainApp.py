@@ -155,7 +155,7 @@ def create_unified_app() -> FastAPI:
     # Compatibility dispatchers that route based on activityType to keep FE paths stable
     from fastapi import Request
 
-    RATE_ACTIVITY_TYPES = {"pacing_curve", "rate_match", "speed_shift", "consistency_tracker"}
+    RATE_ACTIVITY_TYPES = {"pacing_curve", "rate_match", "speed_shift", "consistency_tracker", "ideal_pace_challenge"}
     PAUSE_ACTIVITY_TYPES = {
         "pause_timing",
         "excessive_pause_elimination",
@@ -168,20 +168,15 @@ def create_unified_app() -> FastAPI:
     }
 
     @unified.post("/real-time-analysis/")
-    async def _compat_real_time_analysis(req: Request):  # type: ignore[misc]
-        body = await req.json()
-        activity_type = body.get("activityType") if isinstance(body, dict) else None
-        if activity_type in RATE_ACTIVITY_TYPES:
-            return RedirectResponse(url="/rate/real-time-analysis/", status_code=307)
-        if activity_type in PAUSE_ACTIVITY_TYPES:
-            return RedirectResponse(url="/pause/real-time-analysis/", status_code=307)
-        # Fallback: default to pause domain
-        return RedirectResponse(url="/pause/real-time-analysis/", status_code=307)
+    async def _compat_real_time_analysis():  # type: ignore[misc]
+        # For compatibility routing, we'll redirect to rate by default since the frontend 
+        # is calling this for rate activities (ideal_pace_challenge)
+        return RedirectResponse(url="/rate/real-time-analysis/", status_code=307)
 
     @unified.post("/analyze-activity/")
-    async def _compat_analyze_activity(req: Request):  # type: ignore[misc]
+    async def _compat_analyze_activity(request: Request):  # type: ignore[misc]
         # Decide based on query param since we cannot read multipart body here
-        qp = req.query_params
+        qp = request.query_params
         activity_type = qp.get("activityType") or qp.get("activity_type") or qp.get("activity")
         scope = qp.get("scope")
         if scope == "rate" or activity_type in RATE_ACTIVITY_TYPES:
@@ -195,9 +190,31 @@ def create_unified_app() -> FastAPI:
     async def _compat_generate_suggestions():  # type: ignore[misc]
         return RedirectResponse(url="/pause/generate-suggestions/", status_code=307)
 
-    @unified.post("/predict-filler-words")
+    # Compatibility route for rate feedback generation used by the frontend
+    @unified.post("/generate-rate-feedback/")
+    async def _compat_generate_rate_feedback():  # type: ignore[misc]
+        return RedirectResponse(url="/rate/generate-rate-feedback/", status_code=307)
+
+    @unified.post("/ideal-pace-challenge/")
+    async def _compat_ideal_pace_challenge():  # type: ignore[misc]
+        return RedirectResponse(url="/rate/ideal-pace-challenge/", status_code=307)
+
+    # New pause real-time activity compatibility routes
+    @unified.post("/pause-realtime-monitoring/")
+    async def _compat_pause_realtime_monitoring():  # type: ignore[misc]
+        return RedirectResponse(url="/pause/process-audio-chunk/", status_code=307)
+
+    @unified.post("/pause-improvement-challenge/")
+    async def _compat_pause_improvement_challenge():  # type: ignore[misc]
+        return RedirectResponse(url="/pause/pause-improvement-challenge/", status_code=307)
+
+    @unified.post("/analyze-pause-session/")
+    async def _compat_analyze_pause_session():  # type: ignore[misc]
+        return RedirectResponse(url="/pause/analyze-pause-session/", status_code=307)
+
+    @unified.post("/predict-filler-words/")
     async def _compat_predict_filler_words():  # type: ignore[misc]
-        return RedirectResponse(url="/filler/predict-filler-words", status_code=307)
+        return RedirectResponse(url="/filler/predict-filler-words/", status_code=307)
 
     @unified.post("/predict-loudness/")
     async def _compat_predict_loudness():  # type: ignore[misc]
@@ -214,6 +231,10 @@ def create_unified_app() -> FastAPI:
                         "/pause/pause-analysis/",
                         "/pause/real-time-analysis/",
                         "/pause/analyze-activity/",
+                        "/pause/realtime-monitoring/",
+                        "/pause/pause-improvement-challenge/",
+                        "/pause/analyze-pause-session/",
+                        "/pause/activity-types/",
                         "/pause/test",
                         "/pause/test-features/",
                     ],
@@ -224,12 +245,14 @@ def create_unified_app() -> FastAPI:
                         "/rate/rate-analysis/",
                         "/rate/real-time-analysis/",
                         "/rate/analyze-activity/",
+                        "/rate/ideal-pace-challenge/",
+                        "/rate/generate-rate-feedback/",
                     ],
                 },
                 "filler_words": {
                     "base_path": "/filler",
                     "endpoints": [
-                        "/filler/predict-filler-words",
+                        "/filler/predict-filler-words/",
                     ],
                 },
                 "loudness": {
