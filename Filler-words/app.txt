@@ -5,10 +5,10 @@ from feature_extractor import extract_features
 app = Flask(__name__)
 model = joblib.load("filler_detector_model.pkl")
 
-@app.route("/predict", methods=["POST"])
+@app.route("/predict-filler-words/", methods=["POST"])
 def predict():
     try:
-        print("✅ Request received at /predict")
+        print("✅ Request received at /predict-filler-words/")
 
         if 'audio' not in request.files:
             return jsonify({"error": "No audio file found"}), 400
@@ -59,4 +59,4 @@ def predict():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001)
+    app.run(host="0.0.0.0", port=8000)
