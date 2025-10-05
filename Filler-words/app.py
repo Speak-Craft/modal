@@ -1,14 +1,13 @@
-from fastapi import FastAPI, File, UploadFile, Form
+from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import librosa, joblib, numpy as np
 from feature_extractor import extract_features
 import tempfile, os
-from pathlib import Path
 
 app = FastAPI()
 
-# CORS similar to test.py
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,85 +16,89 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-MODEL_PATH = Path(__file__).resolve().parent / "filler_detector_model.pkl"
-
-# Load model safely so the server can still start even if loading fails
+# Load model
 try:
-    model = joblib.load(str(MODEL_PATH))
+    model = joblib.load("filler_detector_model.pkl")
+    print("✅ Model loaded successfully")
+    print(f"📊 Model type: {type(model)}")
+    if hasattr(model, 'classes_'):
+        print(f"📊 Model classes: {model.classes_}")
+    if hasattr(model, 'feature_importances_'):
+        print(f"📊 Feature importances shape: {model.feature_importances_.shape}")
 except Exception as e:
-    print(f"❌ Failed to load model at {MODEL_PATH}: {e}")
+    print(f"❌ Error loading model: {e}")
     model = None
 
-@app.post("/predict-filler-words")
-async def predict(audio: UploadFile = File(...), transcript: str | None = Form(None)):
+@app.post("/predict-filler-words/")
+async def predict(audio: UploadFile = File(...)):
     try:
-        print("✅ Request received at /predict-filler-words")
+        print("✅ Request received at /predict-filler-words/")
 
-        # Save uploaded audio to a temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-            content = await audio.read()
-            tmp.write(content)
-            temp_path = tmp.name
+        if not audio.filename:
+            return {"error": "No audio file found"}, 400
+
+        print(f"📄 File received: {audio.filename}")
+        print(f"📄 Content type: {audio.content_type}")
+
+        temp_path = "temp_audio.wav"
+        content = await audio.read()
+        with open(temp_path, "wb") as f:
+            f.write(content)
         print(f"✅ Saved file to {temp_path}")
 
         y, sr = librosa.load(temp_path, sr=16000)
+        chunk_duration_sec = 1.0
+        chunk_size = int(chunk_duration_sec * sr)
 
-        # Whole-clip feature extraction (no chunking)
-        features = extract_features(y, sr)
-        filler_prediction = 0
-        filler_probability = None
-        if model is not None and features is not None:
+        filler_count = 0
+        total_chunks = 0
+
+        # Split into chunks and predict on each
+        for i in range(0, len(y), chunk_size):
+            chunk = y[i:i + chunk_size]
+
+            # Skip too short chunks (less than 0.3 sec)
+            if len(chunk) < int(0.3 * sr):
+                continue
+
             try:
-                filler_prediction = int(model.predict([features])[0])
-                # Optionally include probability if available
-                if hasattr(model, "predict_proba"):
-                    proba = model.predict_proba([features])[0]
-                    filler_probability = float(max(proba))
-            except Exception as _:
-                pass
+                features = extract_features(chunk, sr)
+                if features is None:
+                    continue
+                
+                if model is None:
+                    continue
+                
+                prediction_proba = model.predict_proba([features])[0] if hasattr(model, 'predict_proba') else None
+                
+                # Use a more reasonable threshold for filler detection
+                # Instead of using the hard prediction, use probability threshold
+                filler_probability = prediction_proba[1] if prediction_proba is not None else 0
+                filler_threshold = 0.3  # More lenient threshold
+                
+                prediction = 1 if filler_probability > filler_threshold else 0
+                
+                total_chunks += 1
+                if prediction == 1:
+                    filler_count += 1
+                    print(f"✅ FILLER DETECTED! (prob: {filler_probability:.3f})")
+                    
+            except Exception as e:
+                print(f"❌ Error processing chunk: {e}")
+                continue
 
-        # Clean up temp file
-        try:
-            os.remove(temp_path)
-        except Exception:
-            pass
+        print(f"\n✅ Total chunks analyzed: {total_chunks}")
+        print(f"🗣️ Estimated filler words in clip: {filler_count}")
 
-        # Optional text-based filler counting using provided transcript
-        detected_fillers = []
-        filler_text_count = 0
-        if transcript:
-            fillers = [
-                "um", "uh", "erm", "hmm",
-                "like", "you know", "i mean",
-                "sort of", "kind of", "basically",
-                "actually", "literally", "so", "well", "okay", "right"
-            ]
-            normalized = f" {transcript.lower()} ".replace("\n", " ")
-            import re
-            normalized = re.sub(r"\s+", " ", normalized)
-            normalized = re.sub(r"[\.,!?;:()\"']", " ", normalized)
-
-            for fw in fillers:
-                pattern = rf" {re.escape(fw)} "
-                matches = re.findall(pattern, normalized)
-                if matches:
-                    detected_fillers.append({"word": fw, "count": len(matches)})
-                    filler_text_count += len(matches)
-
-        # Return success payload
         return {
-            "status": "success",
-            "modelLoaded": model is not None,
-            "filler_prediction": filler_prediction if model is not None else 0,
-            "filler_probability": filler_probability,
-            "detected_fillers": detected_fillers,
-            "filler_text_count": filler_text_count,
-            "message": (f"Filler present: {bool(filler_prediction)}" if model is not None else "No model prediction; using transcript-based counts if provided."),
+            "filler_prediction": filler_count,
+            "total_chunks": total_chunks,
+            "message": f"Filler word count detected: {filler_count}"
         }
 
     except Exception as e:
-        print("❌ Error in /predict-filler-words:", str(e))
-        return {"status": "error", "error": str(e)}
+        print("❌ Error in Flask /predict:", str(e))
+        return {"error": str(e)}, 500
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
