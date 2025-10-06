@@ -7,7 +7,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 AUDIO_DIR = "../WAVs"
-MODEL_NAME = "medium"  # whisper
+MODEL_NAME = "base"  # whisper
 CHUNK_SIZE = 30.0      # seconds for distribution bins
 
 # ---------- Industry-Standard Pause Values (Toastmasters/Presentations) ----------

@@ -25,10 +25,6 @@ app.add_middleware(
 # Mount activity router for rate-related activities
 app.include_router(rate_activity_router)
 
-"""
-Keep existing /rate-analysis/ endpoint as-is, but mount new rate activity routes under this app.
-"""
-
 # Load models (leave for /rate-analysis/ path)
 model = None
 clf = load("./mlp_classifier.pkl")
