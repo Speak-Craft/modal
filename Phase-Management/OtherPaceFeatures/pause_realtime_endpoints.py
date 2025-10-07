@@ -821,3 +821,5 @@ async def get_pause_activity_types():
         "badges": PAUSE_BADGES,
         "scoring_thresholds": PAUSE_SCORING_THRESHOLDS
     }
+
+

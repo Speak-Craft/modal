@@ -9,8 +9,9 @@ from typing import Optional
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, FileResponse, JSONResponse
 import uvicorn
+from fastapi import UploadFile, File, Query
 
 
 def _import_module_from_path(module_name: str, file_path: Path, add_sys_path: Optional[Path] = None, chdir_for_import: bool = False) -> ModuleType:
@@ -69,6 +70,10 @@ def create_unified_app() -> FastAPI:
     loudness_dir = base_dir / "loudness-model"
     loudness_app_path = loudness_dir / "predictLoudness.py"
 
+    # Face emotion detection (Flask service)
+    face_dir = base_dir / "Face-detection"
+    face_app_path = face_dir / "app.py"
+
     # Import sub-apps
     # app.py uses `from feature_extraction2 import ...` and reads local model files.
     # We add its directory to sys.path and chdir during import so absolute/relative lookups work.
@@ -103,6 +108,15 @@ def create_unified_app() -> FastAPI:
         chdir_for_import=True,
     )
 
+    # Import face detection app
+    # Must chdir during import so it can find ./model/, ./uploads/, ./output/ relative paths
+    face_module = _import_module_from_path(
+        module_name="face_detection_app",
+        file_path=face_app_path,
+        add_sys_path=face_dir,
+        chdir_for_import=True,
+    )
+
     # Retrieve FastAPI instances from imported modules
     try:
         pause_app: FastAPI = getattr(other_pace_module, "app")
@@ -124,6 +138,12 @@ def create_unified_app() -> FastAPI:
     except AttributeError as exc:
         raise RuntimeError("loudness-model/predictLoudness.py does not expose a FastAPI instance named 'app'") from exc
 
+    # Face detection FastAPI app
+    try:
+        face_app: FastAPI = getattr(face_module, "app")
+    except AttributeError as exc:
+        raise RuntimeError("Face-detection/app.py does not expose a FastAPI instance named 'app'") from exc
+
     # Create unified app and mount the sub-apps
     unified = FastAPI(title="SpeakCraft Unified API", version="1.0.0")
 
@@ -141,6 +161,7 @@ def create_unified_app() -> FastAPI:
     unified.mount("/rate", rate_app)
     unified.mount("/filler", filler_app)
     unified.mount("/loudness", loudness_app)
+    unified.mount("/face", face_app)
 
     # Backward/compatibility routes to support existing frontend paths
     @unified.post("/rate-analysis/")
@@ -150,6 +171,19 @@ def create_unified_app() -> FastAPI:
     @unified.post("/pause-analysis/")
     async def _compat_pause_analysis():  # type: ignore[misc]
         return RedirectResponse(url="/pause/pause-analysis/", status_code=307)
+
+    # Face detection compatibility routes
+    @unified.post("/analyze")
+    async def _compat_face_analyze():  # type: ignore[misc]
+        return RedirectResponse(url="/face/analyze", status_code=307)
+
+    @unified.post("/analyze_frame")
+    async def _compat_face_analyze_frame():  # type: ignore[misc]
+        return RedirectResponse(url="/face/analyze_frame", status_code=307)
+
+    @unified.get("/video/{filename:path}")
+    async def _compat_face_video(filename: str):  # type: ignore[misc]
+        return RedirectResponse(url=f"/face/video/{filename}", status_code=307)
 
     # New compatibility routes for activity endpoints used by the Pace Management UI
     # Compatibility dispatchers that route based on activityType to keep FE paths stable
@@ -259,6 +293,18 @@ def create_unified_app() -> FastAPI:
                     "base_path": "/loudness",
                     "endpoints": [
                         "/loudness/predict-loudness/",
+                    ],
+                },
+                "face_detection": {
+                    "base_path": "/face",
+                    "endpoints": [
+                        "/face/analyze",
+                        "/face/analyze_frame",
+                        "/face/video/{filename}",
+                        # Compatibility
+                        "/analyze",
+                        "/analyze_frame",
+                        "/video/{filename}",
                     ],
                 },
             },

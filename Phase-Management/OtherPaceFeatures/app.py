@@ -646,7 +646,7 @@ async def analyze_pause_management(file: UploadFile = File(...)):
             "emphasis_pause_count": features.get('emphasis_pause_count', 0),
             "optimal_transition_ratio": features.get('optimal_transition_ratio', 0) * 100,
             "optimal_emphasis_ratio": features.get('optimal_emphasis_ratio', 0) * 100,
-            "pause_rhythm_consistency": features.get('pause_rhythm_consistency', 0) * 100,
+            "pause_rhythm_consistency": features.get('pause_rhythm_consistency', 0),
             "golden_ratio_pauses": features.get('golden_ratio_pauses', 0) * 100,
             "pause_entropy": features.get('pause_entropy', 0) * 100,
             "pause_autocorrelation": features.get('pause_autocorrelation', 0) * 100,
@@ -672,9 +672,9 @@ async def analyze_pause_management(file: UploadFile = File(...)):
             
             # Rhythm and flow metrics
             "rhythm_outliers": features.get('rhythm_outliers', 0),
-            "rhythm_regularity": features.get('rhythm_regularity', 0) * 100,
-            "speech_continuity": features.get('speech_continuity', 0) * 100,
-            "speaking_efficiency": features.get('speaking_efficiency', 0) * 100,
+            "rhythm_regularity": features.get('rhythm_regularity', 0),
+            "speech_continuity": features.get('speech_continuity', 0),
+            "speaking_efficiency": features.get('speaking_efficiency', 0),
             "gap_clustering": features.get('gap_clustering', 0),
             
             # Voice quality metrics
@@ -688,7 +688,7 @@ async def analyze_pause_management(file: UploadFile = File(...)):
             "f3_mean": features.get('f3_mean', 0),
             
             # Additional metrics for radar chart
-            "rhythm_consistency": features.get('pause_rhythm_consistency', 0) * 100,
+            "rhythm_consistency": features.get('pause_rhythm_consistency', 0),
             "cognitive_load": features.get('cognitive_pause_score', 0) * 100,
             "contextual_score": features.get('contextual_pause_score', 0) * 100,
         }
